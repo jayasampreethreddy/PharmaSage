@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PharmaSage - Molecular Visualization & Analysis</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- 3Dmol.js -->
+    <script src="https://3dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --light-bg: #ecf0f1;
+            --dark-bg: #34495e;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: white !important;
+        }
+
+        .navbar {
+            background: rgba(44, 62, 80, 0.95) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+
+        .nav-tabs {
+            border: none;
+            background: var(--light-bg);
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            border-radius: 0;
+            padding: 1rem 2rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            transition: all 0.3s ease;
+        }
+
+        .nav-tabs .nav-link.active {
+            background: white;
+            color: var(--secondary-color);
+            border-bottom: 3px solid var(--secondary-color);
+        }
+
+        .nav-tabs .nav-link:hover {
+            background: rgba(52, 152, 219, 0.1);
+            color: var(--secondary-color);
+        }
+
+        .tab-content {
+            padding: 2rem;
+        }
+
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            font-weight: 600;
+        }
+
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
+        }
+
+        .molecule-viewer {
+            width: 250px;
+            height: 250px;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+            background: #f8f9fa;
+            box-sizing: border-box;
+            padding: 0;
+            max-width: 100%;
+            max-height: 250px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden; /* Prevents overflow */
+            position: relative;
+        }
+        .molecule-viewer canvas,
+        .molecule-viewer img {
+            max-width: 100% !important;
+            max-height: 100% !important;
+            display: block;
+            margin: 0 auto;
+            object-fit: contain;
+            position: relative;
+            z-index: 1;
+        }
+        .card-body {
+            padding-top: 1.5rem;
+        }
+
+        .card-body > .molecule-viewer {
+            margin-bottom: 1rem;
+        }
+
+        .property-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .property-label {
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .property-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--dark-bg);
+        }
+
+        .comparison-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .comparison-summary {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 2px solid #f39c12;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .toxicity-warning {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            border: 2px solid var(--accent-color);
+            color: #721c24;
+        }
+
+        .toxicity-safe {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            border: 2px solid var(--success-color);
+            color: #155724;
+        }
+
+        .side-by-side-comparison {
+            margin-top: 1rem;
+        }
+
+        .comparison-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+            align-items: center;
+            padding: 0.75rem;
+            border-radius: 8px;
+            background: rgba(248, 249, 250, 0.5);
+            margin-bottom: 0.5rem;
+        }
+
+        .comparison-row:nth-child(even) {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .comparison-label {
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+            padding: 0.5rem;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 5px;
+        }
+
+        .comparison-value {
+            font-size: 1rem;
+            font-weight: 600;
+            text-align: center;
+            padding: 0.5rem;
+            border-radius: 5px;
+            background: white;
+            border: 1px solid #e9ecef;
+        }
+
+        .toxicity-alert {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 2px solid #f44336;
+            color: #c62828;
+            font-weight: 700;
+            text-align: center;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+            box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+        }
+
+        .toxicity-alert i {
+            color: #d32f2f;
+            margin-right: 0.5rem;
+        }
+
+        .no-toxicity {
+            background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+            border: 2px solid #4caf50;
+            color: #2e7d32;
+            text-align: center;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+            font-weight: 600;
+        }
+
+        .no-toxicity i {
+            color: #388e3c;
+            margin-right: 0.5rem;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .error-message {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            border: 2px solid var(--accent-color);
+            border-radius: 10px;
+            padding: 1rem;
+            color: #721c24;
+            margin-top: 1rem;
+        }
+
+        .insights-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 16px rgba(102,126,234,0.08);
+        }
+
+        @media (max-width: 768px) {
+            .comparison-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .tab-content {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-hexagon-fill me-2"></i>
+                PharmaSage
+            </a>
+            <span class="navbar-text text-light">
+                Molecular Visualization & Analysis Platform
+            </span>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="main-container">
+            <!-- Tab Navigation -->
+            <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="visualizer-tab" data-bs-toggle="tab" data-bs-target="#visualizer" type="button" role="tab" aria-controls="visualizer" aria-selected="true">
+                        <i class="bi bi-eye me-2"></i>
+                        Molecule Visualizer
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="comparator-tab" data-bs-toggle="tab" data-bs-target="#comparator" type="button" role="tab" aria-controls="comparator" aria-selected="false">
+                        <i class="bi bi-bar-chart-line me-2"></i>
+                        Comparator
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="target-predictor-tab" data-bs-toggle="tab" data-bs-target="#target-predictor" type="button" role="tab" aria-controls="target-predictor" aria-selected="false">
+                        <i class="bi bi-bullseye me-2"></i>
+                        Target Predictor
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="insights-tab-btn" data-bs-toggle="tab" data-bs-target="#insights" type="button" role="tab" aria-controls="insights" aria-selected="false">
+                        <i class="bi bi-lightbulb me-2"></i>
+                        Insights
+                    </button>
+                </li>
+                <!-- KG Visualizer Tab as external link -->
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="chatbot-tab-btn" data-bs-toggle="tab" data-bs-target="#chatbot" type="button" role="tab" aria-controls="chatbot" aria-selected="false">
+                        <i class="bi bi-chat-dots me-2"></i>
+                        Chatbot
+                    </button>
+                </li>
+
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="mainTabsContent">
+                <!-- Molecule Visualizer Tab -->
+                <div class="tab-pane fade show active" id="visualizer" role="tabpanel">
+                    <!-- Search/Selection Card (full width) -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="bi bi-search me-2"></i>
+                                    Drug Selection
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <label for="drug-select" class="form-label">Select Drug</label>
+                                            <select class="form-select" id="drug-select">
+                                                <option value="">Choose a drug...</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="drug-search" class="form-label">Or Enter Name/SMILES</label>
+                                            <input type="text" class="form-control" id="drug-search" placeholder="Enter drug name or SMILES...">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-primary w-100 mt-3" onclick="loadMolecule()">
+                                        <i class="bi bi-search me-2"></i>
+                                        Load Molecule
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 3D Viewer and Properties Side by Side -->
+                    <div class="row">
+                        <div class="col-lg-7 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="bi bi-molecule me-2"></i>
+                                    3D Molecular Structure
+                                </div>
+                                <div class="card-body d-flex flex-column align-items-center justify-content-between">
+                                    <div id="molecule-viewer" class="molecule-viewer"></div>
+                                    <div class="mt-2 mb-2 text-center" id="main-molecule-name" style="font-weight:bold;"></div>
+                                </div>
+                            </div>
+                            <!-- Molecule Legend Card (always visible below viewer) -->
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <i class="bi bi-info-square me-2"></i>
+                                    Molecule Legend
+                                </div>
+                                <div class="card-body">
+                                    <ul style="margin-bottom:0;">
+                                        <li><span style="color: #B0B0B0; font-weight: bold;">Gray/White</span>: Carbon (C)</li>
+                                        <li><span style="color: #FF0000; font-weight: bold;">Red</span>: Oxygen (O)</li>
+                                        <li><span style="color: #0000FF; font-weight: bold;">Blue</span>: Nitrogen (N)</li>
+                                        <li><span style="color: #FFFF00; font-weight: bold;">Yellow</span>: Sulfur (S)</li>
+                                        <li><span style="color: #00FF00; font-weight: bold;">Green</span>: Chlorine (Cl)</li>
+                                        <li><span style="color: #FFA500; font-weight: bold;">Orange</span>: Phosphorus (P)</li>
+                                        <li><span style="color: #00BFFF; font-weight: bold;">Light Blue</span>: Fluorine (F)</li>
+                                        <li><span style="color: #228B22; font-weight: bold;">Dark Green</span>: Bromine (Br)</li>
+                                        <li><span style="color: #800080; font-weight: bold;">Purple</span>: Iodine (I)</li>
+                                        <li><span style="color: #FFC0CB; font-weight: bold;">Pink</span>: Boron (B)</li>
+                                        <li><span style="color: #FFB6C1; font-weight: bold;">Light Pink</span>: Hydrogen (H) (may not be shown)</li>
+                                    </ul>
+                                    <div class="mt-2" style="font-size: 0.95em; color: #555;">
+                                        <strong>Sticks/Balls:</strong> Bonds are shown as sticks. Atoms are shown as spheres (balls) colored by element. Hydrogens may be omitted for clarity.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-5 mb-3">
+                            <div class="card h-100" id="properties-card" style="display: none;">
+                                <div class="card-header">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    Molecular Properties
+                                </div>
+                                <div class="card-body" id="properties-content">
+                                    <!-- Properties will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Molecule Comparator Tab -->
+                <div class="tab-pane fade" id="comparator" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-arrow-left-right me-2"></i>
+                            Drug Comparison
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label for="drug1-select" class="form-label">First Drug</label>
+                                    <select class="form-select" id="drug1-select">
+                                        <option value="">Choose first drug...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="drug2-select" class="form-label">Second Drug</label>
+                                    <select class="form-select" id="drug2-select">
+                                        <option value="">Choose second drug...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="compareDrugs()">
+                                <i class="bi bi-arrow-left-right me-2"></i>
+                                Compare Drugs
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Comparison Results -->
+                    <div id="comparison-results" style="display: none;">
+                        <!-- 3D Structures Side by Side -->
+                        <div class="comparison-container mb-4">
+                            <!-- Drug 1 -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="bi bi-capsule me-2"></i>
+                                    <span id="drug1-name">Drug 1</span>
+                                </div>
+                                <div class="card-body d-flex flex-column align-items-center justify-content-between">
+                                    <div id="molecule-viewer1" class="molecule-viewer mb-3"></div>
+                                    <div class="mt-2 mb-2 text-center" id="drug1-name-below" style="font-weight:bold;"></div>
+                                    <div id="drug1-toxicity"></div>
+                                </div>
+                            </div>
+
+                            <!-- Drug 2 -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="bi bi-capsule me-2"></i>
+                                    <span id="drug2-name">Drug 2</span>
+                                </div>
+                                <div class="card-body d-flex flex-column align-items-center justify-content-between">
+                                    <div id="molecule-viewer2" class="molecule-viewer mb-3"></div>
+                                    <div class="mt-2 mb-2 text-center" id="drug2-name-below" style="font-weight:bold;"></div>
+                                    <div id="drug2-toxicity"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Side-by-Side Properties Comparison -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="bi bi-table me-2"></i>
+                                Properties Comparison
+                            </div>
+                            <div class="card-body">
+                                <div id="side-by-side-properties">
+                                    <!-- Side-by-side comparison will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Comparison Summary -->
+                        <div class="comparison-summary" id="comparison-summary">
+                            <!-- Summary will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Target Predictor Tab -->
+                <div class="tab-pane fade" id="target-predictor" role="tabpanel">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-bullseye me-2"></i>
+                            Target Predictor
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-6">
+                                    <label for="target-dropdown" class="form-label">Select Molecule</label>
+                                    <select class="form-select" id="target-dropdown">
+                                        <option value="">Choose a molecule...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="target-input" class="form-label">Or Enter SMILES</label>
+                                    <input type="text" class="form-control" id="target-input" placeholder="Enter SMILES or drug name...">
+                                </div>
+                            </div>
+                            <button class="btn btn-primary w-100 mt-3" id="predict-target-btn">
+                                <i class="bi bi-bullseye me-2"></i>
+                                Predict Targets
+                            </button>
+                        </div>
+                    </div>
+                    <div id="target-loading-spinner" class="loading-spinner" style="display:none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Predicting targets...</p>
+                    </div>
+                    <div id="target-error" class="error-message" style="display:none;"></div>
+                    <div id="target-results" style="display:none;">
+                        <div id="predicted-targets" class="mb-4"></div>
+                        <div id="similar-molecules-visuals" class="mb-4"></div>
+                        <div id="similar-drugs" class="mb-4"></div>
+                        <div id="target-explanation" class="mb-4"></div>
+                    </div>
+                </div>
+
+                <!-- Insights Tab -->
+                <div class="tab-pane fade" id="insights" role="tabpanel">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-lightbulb me-2"></i>
+                            Insights (Internet RAG)
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="insights-drug-select" class="form-label">Select Drug</label>
+<select class="form-select mb-2" id="insights-drug-select">
+    <option value="">-- Choose a drug from list --</option>
+</select>
+<label for="insights-drug-input" class="form-label">Or enter custom drug name</label>
+<input type="text" class="form-control" id="insights-drug-input" placeholder="e.g. Abrocitinib">
+<small class="text-muted">Selecting a drug will fill the input above. You can also type a new drug name manually.</small>
+                            </div>
+                            <button class="btn btn-primary w-100 mb-3" id="insights-fetch-btn">
+                                <i class="bi bi-lightbulb me-2"></i>
+                                Get Insights
+                            </button>
+                            <div id="insights-loading-spinner" class="loading-spinner" style="display:none;">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2">Fetching insights...</p>
+                            </div>
+                            <div id="insights-error" class="error-message" style="display:none;"></div>
+                            <div id="insights-summary" class="mb-4 insights-summary"></div>
+                            <div id="insights-articles"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gemini Chatbot Tab -->
+                <div class="tab-pane fade" id="chatbot" role="tabpanel" aria-labelledby="chatbot-tab-btn">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-chat-dots me-2"></i>
+                            Chatbot
+                        </div>
+                        <div class="card-body">
+                            <div id="chatbot-messages" style="height: 250px; overflow-y: auto; background: #f8f9fa; border-radius: 10px; padding: 1rem; margin-bottom: 1rem; border: 1px solid #e9ecef;"></div>
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control" id="chatbot-input" placeholder="Ask a scientific question...">
+                                <button class="btn btn-primary" id="chatbot-send-btn" type="button">
+                                    <i class="bi bi-send"></i>
+                                </button>
+                            </div>
+                            <div id="chatbot-loading-spinner" class="loading-spinner" style="display:none;">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2">Getting answer...</p>
+                            </div>
+                            <div id="chatbot-error" class="error-message" style="display:none; color: #e74c3c; margin-top: 0.5rem;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div class="loading-spinner" id="loading-spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading molecule data...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/viewer.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/target_predictor.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/insights.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+</body>
+</html>
